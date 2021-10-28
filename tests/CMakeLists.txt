@@ -1,8 +1,8 @@
 find_library(GTEST_LIB gtest)
 find_library(GTEST_MAIN_LIB gtest_main)
-IF (NOT GTEST_LIB OR NOT GTEST_MAIN_LIB)
+#IF (NOT GTEST_LIB OR NOT GTEST_MAIN_LIB)
     ADD_SUBDIRECTORY(googletest)
-ENDIF()
+#ENDIF()
 
 SET(BANKS_TESTS_SOURCE_FILES main.cpp)
 

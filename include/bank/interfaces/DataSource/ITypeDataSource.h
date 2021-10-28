@@ -25,8 +25,4 @@ namespace interfaces::DataSource {
             }
         }
     };
-
-    class IAccountTypeDataSource {
-
-    };
 }
