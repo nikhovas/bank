@@ -16,3 +16,26 @@ public:
         return "Bad data source for object";
     }
 };
+
+
+class TryCreateTransactionForUnverifiedClient : public std::exception {
+public:
+    const char* what() const throw() {
+        return "Bad data source for object";
+    }
+};
+
+
+class BadNameOrSurnameForClient : public std::exception {
+public:
+    const char* what() const throw() {
+        return "Bad data source for object";
+    }
+};
+
+class TryToPerformBannedOperation : public std::exception {
+public:
+    const char* what() const throw() {
+        return "Bad data source for object";
+    }
+};
