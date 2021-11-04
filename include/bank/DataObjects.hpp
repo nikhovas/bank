@@ -1,8 +1,11 @@
 #pragma once
 #include "bank/interfaces/DataSource/IDataObjectMetaInfo.h"
 #include "bank/DataSources//VirtualObjectMetaInfo.h"
+#include "constants.h"
+#include <boost/date_time/gregorian/gregorian.hpp>
 #include <string>
 #include <vector>
+#include <ctime>
 
 
 #define AllowCreating virtual void makeVirtual() override {}
@@ -10,6 +13,9 @@
 
 
 namespace DatabaseObjects {
+    using namespace boost::gregorian;
+    using namespace constants;
+    
     using id = std::size_t;
 
     struct DatabaseObject {
@@ -30,20 +36,54 @@ namespace DatabaseObjects {
 
     struct BankAccount: DatabaseObject {
         id client_id;
-        std::time_t opened_time;
-        ssize_t money;
+        date opened_date;
+        double money;
 
-        virtual BankAccount* lookFuture(std::time_t futureMoment, std::time_t periodInterval) = 0;
+        virtual BankAccount* lookFuture(date futureMoment, date_duration periodInterval) = 0;
+
+//    private:
+        struct PaymentsResult {
+            date closest_payment;
+            date latest_payment;
+            size_t num_payments;
+        };
+
+        PaymentsResult getPaymentsBound(date today, date future_moment, date_duration period_interval) {
+            size_t num_payments = 0;
+
+            auto it = day_iterator(opened_date, period_interval.days());
+            while (today > *it) {
+                ++it;
+            }
+            date closest_payment = *it;
+            while (future_moment >= *it) {
+                ++it;
+                num_payments += 1;
+            }
+            date last_payment = *(--it);
+            return {closest_payment, last_payment, num_payments};
+
+        }
     };
 
     struct DebitAccount: BankAccount {
-        ssize_t percentage;
-        id accumulated;
+        double interest_rate;
+        double accumulated;
 
-        virtual BankAccount* lookFuture(std::time_t future_moment, std::time_t period_interval) override {
+        virtual BankAccount* lookFuture(date future_moment, date_duration period_interval) override {
             DebitAccount* object = new DebitAccount();
             object->meta_info = new VirtualDataObjectMetaInfo();
-            // TODO
+            object->opened_date = opened_date;
+            object->client_id = client_id;
+            object->interest_rate = interest_rate;
+
+            date today = day_clock::local_day();
+            auto res = getPaymentsBound(today, future_moment, period_interval);
+
+            double future_money = accumulated + money * (1 + interest_rate / daysPerYear * (res.closest_payment - today).days());
+            future_money *= pow(1 + interest_rate / daysPerYear * period_interval.days(), res.num_payments - 1);
+            object->money = future_money;
+
             return object;
         }
 
@@ -51,12 +91,25 @@ namespace DatabaseObjects {
     };
 
     struct DepositAccount: BankAccount {
-        ssize_t percentage;
+        double interest_rate;
+        double accumulated;
+        date end_date;
 
-        virtual BankAccount* lookFuture(std::time_t future_moment, std::time_t period_interval) override {
+        virtual BankAccount* lookFuture(date future_moment, date_duration period_interval) override {
             DepositAccount* object = new DepositAccount();
             object->meta_info = new VirtualDataObjectMetaInfo();
-            // TODO
+            object->opened_date = opened_date;
+            object->client_id = client_id;
+            object->interest_rate = interest_rate;
+
+            date today = day_clock::local_day();
+            future_moment = std::min(future_moment, end_date);
+            auto res = getPaymentsBound(today, future_moment, period_interval);
+
+            double future_money = accumulated + money * (1 + interest_rate / daysPerYear * (res.closest_payment - today).days());
+            future_money *= pow(1 + interest_rate / daysPerYear * period_interval.days(), res.num_payments - 1);
+            object->money = future_money;
+
             return object;
         }
 
@@ -64,12 +117,17 @@ namespace DatabaseObjects {
     };
 
     struct CreditAccount: BankAccount {
-        ssize_t percentage;
+        double credit_limit;
+        double commission;
 
-        virtual BankAccount* lookFuture(std::time_t future_moment, std::time_t period_interval) override {
+        virtual BankAccount* lookFuture(date future_moment, date_duration period_interval) override {
             CreditAccount* object = new CreditAccount();
             object->meta_info = new VirtualDataObjectMetaInfo();
-            // TODO
+            object->opened_date = opened_date;
+            object->client_id = client_id;
+            object->commission = commission;
+            object->credit_limit = credit_limit;
+            object->money = money;
             return object;
         }
 
@@ -77,8 +135,8 @@ namespace DatabaseObjects {
     };
 
     struct Transaction: DatabaseObject {
-        std::time_t time;
-        ssize_t money;
+        time_t time;
+        double money;
 
         virtual std::vector<id> getAssociatedAccounts() = 0;
     };
@@ -115,8 +173,8 @@ namespace DatabaseObjects {
     };
 
     struct DebitPercentsTransaction: Transaction {
-        std::time_t begin_period;
-        std::time_t end_period;
+        date begin_period;
+        date end_period;
         id bank_account_id;
 
         virtual std::vector<id> getAssociatedAccounts() override {

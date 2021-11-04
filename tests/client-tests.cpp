@@ -18,6 +18,7 @@ TEST(ClientTests, SimpleUserTest) {
 }
 
 
+
 TEST(ClientTests, TwoUsersDifferentIdsTest) {
     dsi::ITypeDataSource* storage = (new OperativeMemory::DataSource())->getClientStorage();
     Client* object = generateUser(storage, "1234", "F");
