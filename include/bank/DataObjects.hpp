@@ -41,7 +41,7 @@ namespace DatabaseObjects {
 
         virtual BankAccount* lookFuture(date futureMoment, date_duration periodInterval) = 0;
 
-//    private:
+    protected:
         struct PaymentsResult {
             date closest_payment;
             date latest_payment;
@@ -62,7 +62,6 @@ namespace DatabaseObjects {
             }
             date last_payment = *(--it);
             return {closest_payment, last_payment, num_payments};
-
         }
     };
 
